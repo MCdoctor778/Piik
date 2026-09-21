@@ -35,9 +35,9 @@ the storage decision; implementation detail belongs in code and tests.
 
 Three independent authorities exist:
 
-1. **Site access.** `SITE_ACCESS_PASSWORD` is optional in every environment,
-   including production. Unset or empty makes site access immediate without a
-   cookie; room ownership and Viewer admission still apply. When configured,
+1. **Site access.** `SITE_ACCESS_PASSWORD` is required and non-blank for production
+   Server deployment. Development and App Local may leave it empty, making site
+   access immediate without a cookie; room ownership and Viewer admission still apply. When configured,
    successful password entry creates a stateless, HttpOnly,
    `SameSite=Strict` cookie with a 24-hour rolling idle lifetime. An already
    authorized page renews it through the site-access check while it remains
@@ -61,6 +61,9 @@ Browser behavior. The grant has no independent TTL and ends with the room or
 when the Host rotates or revokes it.
 
 Code-only admission is independent of invitations:
+
+New Browser profiles default to `private` without a room password (invitation-only).
+An explicitly saved access policy is preserved; existing rooms are not changed.
 
 - `open` admits a site-authorized Viewer by room code;
 - `private` without a password is invitation-only;

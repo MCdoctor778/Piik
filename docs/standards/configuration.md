@@ -25,7 +25,8 @@ service secret store or an untracked access-restricted environment file.
 | `PORT` | Positive TCP port, default `8787`; the tracked release wrapper supports only that default. |
 | `PUBLIC_BASE_URL` | Exact public HTTP(S) origin; production requires HTTPS. |
 | `ALLOWED_ORIGINS` | Comma-separated exact HTTP(S) origins; wildcard is invalid. |
-| `SITE_ACCESS_PASSWORD` | Optional in every environment. Unset or empty allows entry without a site password. A configured value is matched exactly, including spaces and Unicode; there are no password length or character rules. General HTTP request limits still apply. Room ownership and Viewer admission remain independent. |
+| `SITE_ACCESS_PASSWORD` | Required and non-blank in production; optional in development and App Local. Non-blank values are matched exactly, including spaces and Unicode. Room ownership and Viewer admission remain independent. |
+| `TRUSTED_PROXY_CIDRS` | Comma-separated explicit proxy CIDRs; empty trusts none. Only these peers can supply client addresses through `X-Forwarded-For`, read from right to left up to the first untrusted hop. Default routes (`/0`) and IPv4-mapped IPv6 prefixes are rejected. Use `127.0.0.1/32,::1/128` only for a same-host proxy; containers need the actual proxy source network. |
 | `ROOM_DATABASE_PATH` | Hosted defaults to `rooms.sqlite` in its working directory when unset or blank. An explicit absolute file path selects another SQLite file; `:memory:` opts into process-memory room authority. App Local remains in memory. |
 | `MAX_VIEWERS_PER_ROOM` | `1..20`, default `20`; excludes the Host. |
 | `ENDPOINT_MEDIA_COPY_CAPACITY` | Shared endpoint steady-copy cap `1..3`, default `2`. |
@@ -260,8 +261,18 @@ test requires a second public IPv4.
 
 ## Bounds
 
-- Site-access requests are rate-limited at the reverse proxy and use constant-
-  time secret comparison in the application.
+- Password login POSTs have an application token bucket per client IP: 5 attempts
+  initially, then one every 12 seconds. Authenticated room creation has 10
+  initially, then one every 6 seconds. Rejected attempts return HTTP 429 and
+  `Retry-After: 60`. Bad origins and unauthenticated creation consume no tokens.
+  Secret comparison is constant-time; a reverse proxy may add its own limits.
+- Each limiter holds at most 4,096 client addresses, discards entries idle for
+  10 minutes, and rejects new identities when full. Limits reset on restart and
+  apply to one process; users behind the same NAT share an allowance. Proxies
+  must overwrite forwarding headers and be explicitly trusted to separate users.
+- Production site authentication prevents anonymous persistent room allocation;
+  an authorized user can still consume the finite room pool over time. This is
+  a shared-password service, with no account quotas or automatic room expiry.
 - HTTP body, WebSocket payload, total/unauthed connections, room count, Viewer
   count, output buffers, endpoint copies, and SFU resources are bounded.
 - The four-digit code space fixes the maximum managed Host publications at

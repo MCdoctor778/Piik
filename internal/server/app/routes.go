@@ -170,6 +170,9 @@ func (s *Server) handleSiteAccess(writer http.ResponseWriter, request *http.Requ
 	}
 	// Released clients send a bodyless Bearer request. JSON preserves passwords
 	// that cannot be represented in an HTTP header and takes precedence when sent.
+	if access.required() && !s.allowLimitedRequest(writer, request, s.loginLimiter) {
+		return
+	}
 	provided := bearerToken(request)
 	if hasRequestBody(request) {
 		body, err := readJSONBody(request)
@@ -295,6 +298,9 @@ func (s *Server) handleRoomCreation(
 	// a `Bearer <site password>` header does not authorize it.
 	if !s.roomCreationAuthorized(request) {
 		sendJSON(writer, http.StatusUnauthorized, errorBody{"Unauthorized"})
+		return
+	}
+	if !s.allowLimitedRequest(writer, request, s.createLimiter) {
 		return
 	}
 	body, err := readJSONBody(request)

@@ -19,8 +19,10 @@ concurrency:
 jobs:
   deploy:
     if: >-
+      vars.PIIK_WEBSITE_ENABLED == 'true' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.event == 'push')
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

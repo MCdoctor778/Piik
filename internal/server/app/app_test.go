@@ -633,7 +633,9 @@ func TestLocalPasswordUsesConfiguredDestinationCookieAcrossLANAndPublicLink(t *t
 }
 
 func TestSiteAccessRequiresAnAllowedOriginAndAValidLoginBody(t *testing.T) {
-	server := start(t, Options{Config: testConfig(t)})
+	var now atomic.Int64
+	now.Store(time.Now().UnixMilli())
+	server := start(t, Options{Config: testConfig(t), Now: now.Load})
 	forbidden := `{"error":"Forbidden"}`
 
 	server.do(http.MethodPost, "/api/site-access", withBearer(testAccessPassword)).
@@ -653,6 +655,7 @@ func TestSiteAccessRequiresAnAllowedOriginAndAValidLoginBody(t *testing.T) {
 		`{"password":"wrong","extra":true}`, `{"password":"wrong"} {}`,
 		`{"password":"` + strings.Repeat("x", maxJSONRequestBytes) + `"}`,
 	} {
+		now.Add(12_000) // Exercise body validation independently of the login limit.
 		server.do(http.MethodPost, "/api/site-access", withOrigin(allowedOrigin),
 			withBearer(testAccessPassword), withJSON(payload)).
 			expect(http.StatusBadRequest, `{"error":"Invalid site access request"}`)
