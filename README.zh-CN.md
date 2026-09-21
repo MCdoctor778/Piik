@@ -1,3 +1,6 @@
+> MCdoctor778 自用适配：默认私密房间、生产环境访问口令及应用限流，保持 P2P 优先和可选服务器兜底。
+> 请按[本仓库部署说明](./docs/operations/self-hosting.zh-CN.md)构建；下方官网、演示和下载链接属于上游，不包含本仓库修复。
+
 <p align="center"><img src="./public/favicon.svg" width="64" height="64" alt="Piik 吉祥物"></p>
 <h1 align="center">Piik</h1>
 <p align="center"><strong>来，看点<br>好康的。</strong><br>私密屏幕共享，邀请最多 20 位朋友观看。</p>

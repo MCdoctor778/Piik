@@ -31,10 +31,10 @@ after adapting the domain and certificate paths.
 ## Container
 
 Use the [Docker Compose setup](./self-hosting.md#docker-compose) for installation.
-The image is `ghcr.io/tntcrafthim/piik`, with `latest` and matching product version
-tags (`vMAJOR.MINOR.PATCH`). It supports **linux/amd64**. Set `PIIK_IMAGE` in `.env`
-to pin a version or image digest. Updates are explicit; pulling an image does not
-replace a running container.
+This adaptation builds a local `piik:self-hosted` image for **linux/amd64**.
+Use distinct tags to retain builds and set `PIIK_IMAGE` in `.env` accordingly.
+Rebuild using the installation guide before updating, and retain the previous
+image for rollback. Upstream images do not contain this repository's fixes.
 
 The [runtime Dockerfile](../../deploy/container/Dockerfile) wraps the verified
 Server archive, including its Web UI, license notices and `REVISION`.
@@ -72,10 +72,9 @@ There is no shell-based healthcheck in the image. Retain the previous image,
 environment and volume backup before replacement. From the deployment directory:
 
 ```sh
-docker compose pull
 docker compose stop
 docker compose cp piik:/home/nonroot ./piik-data-backup
-docker compose up -d
+docker compose up -d --pull never
 docker compose logs --tail=50 piik
 ```
 

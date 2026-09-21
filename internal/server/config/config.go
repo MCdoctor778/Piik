@@ -74,8 +74,10 @@ type Config struct {
 	ListenHost    string
 	PublicBaseURL *url.URL
 	// AllowedOrigins is a membership test only; map order is not observable.
-	AllowedOrigins            map[string]struct{}
-	SiteAccessPassword        string
+	AllowedOrigins     map[string]struct{}
+	SiteAccessPassword string
+	// Forwarded client addresses are trusted only from these immediate peers.
+	TrustedProxyCIDRs         []netip.Prefix
 	RoomDatabasePath          string
 	MaxViewersPerRoom         int
 	EndpointMediaCopyCapacity int
@@ -135,6 +137,13 @@ func Load(env map[string]string) (Config, error) {
 	}
 
 	siteAccessPassword := env["SITE_ACCESS_PASSWORD"]
+	if environment == EnvironmentProduction && strings.TrimSpace(siteAccessPassword) == "" {
+		return Config{}, errors.New("SITE_ACCESS_PASSWORD must be non-empty in production")
+	}
+	trustedProxyCIDRs, err := parseTrustedProxyCIDRs(env["TRUSTED_PROXY_CIDRS"])
+	if err != nil {
+		return Config{}, err
+	}
 	roomDatabasePath, err := parseRoomDatabasePath(env["ROOM_DATABASE_PATH"])
 	if err != nil {
 		return Config{}, err
@@ -195,6 +204,7 @@ func Load(env map[string]string) (Config, error) {
 		PublicBaseURL:             publicBaseURL,
 		AllowedOrigins:            allowedOrigins,
 		SiteAccessPassword:        siteAccessPassword,
+		TrustedProxyCIDRs:         trustedProxyCIDRs,
 		RoomDatabasePath:          roomDatabasePath,
 		MaxViewersPerRoom:         int(maxViewersPerRoom),
 		EndpointMediaCopyCapacity: int(endpointMediaCopyCapacity),
@@ -203,6 +213,21 @@ func Load(env map[string]string) (Config, error) {
 		STUNListenAddresses:       stunListeners,
 		NATPredictionEnabled:      natPredictionEnabled,
 	}, nil
+}
+
+func parseTrustedProxyCIDRs(value string) ([]netip.Prefix, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	var prefixes []netip.Prefix
+	for _, entry := range strings.Split(value, ",") {
+		prefix, err := netip.ParsePrefix(strings.TrimSpace(entry))
+		if err != nil || prefix.Bits() == 0 || prefix.Addr().Is4In6() {
+			return nil, errors.New("TRUSTED_PROXY_CIDRS must contain explicit IPv4/IPv6 proxy networks, not a default route")
+		}
+		prefixes = append(prefixes, prefix.Masked())
+	}
+	return prefixes, nil
 }
 
 func parseEnvironment(env map[string]string) (Environment, error) {

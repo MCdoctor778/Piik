@@ -68,7 +68,9 @@ async function binding(port) {
 }
 
 copyFileSync(join(root, "deploy/container/compose.yaml"), join(workspace, "compose.yaml"));
-const sample = readFileSync(join(root, "deploy/container/.env.example"), "utf8");
+const password = randomBytes(24).toString("base64url");
+const sample = readFileSync(join(root, "deploy/container/.env.example"), "utf8")
+  .replace(/^SITE_ACCESS_PASSWORD=.*$/m, `SITE_ACCESS_PASSWORD=${password}`);
 writeFileSync(join(workspace, ".env"), sample);
 try {
   const metadata = JSON.parse(docker("image", "inspect", image))[0];
@@ -80,7 +82,13 @@ try {
   compose("up", "-d", "--pull", "never");
   await until(async () => assert.deepEqual(await (await request("/healthz")).json(), { status: "ok" }), "ready");
   assert.deepEqual(await (await request("/api/capabilities")).json(), { sfu: false, natPrediction: false });
-  assert.equal((await (await request("/api/site-access")).json()).required, false);
+  assert.equal((await (await request("/api/site-access")).json()).required, true);
+  const login = await request("/api/site-access", {
+    method: "POST", headers: { Origin: "https://share.example.com", "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  const cookie = login.headers.get("set-cookie")?.split(";")[0];
+  assert.ok(cookie, "Production login must issue a site-access cookie");
   const html = await (await request("/")).text();
   const asset = html.match(/src="(\/assets\/index-[A-Za-z0-9_-]+\.js)"/)?.[1];
   assert.ok(asset, "Server must embed the Web UI");
@@ -88,8 +96,8 @@ try {
   assert.ok(script.includes(revision), "Web and Server must have the same source identity");
   await binding(3478);
   const room = await (await request("/api/rooms", {
-    method: "POST", headers: { Origin: "https://share.example.com", "Content-Type": "application/json" },
-    body: JSON.stringify({ codeEntryPolicy: "open" }),
+    method: "POST", headers: { Origin: "https://share.example.com", Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify({ codeEntryPolicy: "private" }),
   })).json();
   assert.match(room.roomId, /^[1-9][0-9]{3}$/);
   assert.ok(room.hostToken);
@@ -104,7 +112,7 @@ try {
   await until(async () => assert.deepEqual(await (await request("/api/capabilities")).json(), { sfu: true, natPrediction: true }), "optional services");
   await request(`/api/rooms/${room.roomId}/access`, {
     method: "POST",
-    headers: { Origin: "https://share.example.com", Authorization: `Bearer ${room.hostToken}`, "Content-Type": "application/json" },
+    headers: { Origin: "https://share.example.com", Cookie: cookie, Authorization: `Bearer ${room.hostToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ action: "set-code-entry-policy", policy: "private" }),
   });
   for (const port of [3478, 3479, 3480]) await binding(port);

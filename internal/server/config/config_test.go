@@ -98,16 +98,18 @@ func TestLoadDevelopmentDefaults(t *testing.T) {
 	}
 }
 
-func TestLoadProductionAllowsAnUnsetOrEmptySiteAccessPassword(t *testing.T) {
-	for _, name := range []string{"unset", "empty"} {
+func TestLoadProductionRequiresSiteAccessPassword(t *testing.T) {
+	for _, name := range []string{"unset", "empty", "whitespace"} {
 		t.Run(name, func(t *testing.T) {
 			environment := env(productionBase, map[string]string{"SITE_ACCESS_PASSWORD": ""})
 			if name == "unset" {
 				delete(environment, "SITE_ACCESS_PASSWORD")
 			}
-			configuration := mustLoad(t, environment)
-			if configuration.Env != EnvironmentProduction || configuration.SiteAccessPassword != "" {
-				t.Fatal("expected a production site without an access password")
+			if name == "whitespace" {
+				environment["SITE_ACCESS_PASSWORD"] = " \t"
+			}
+			if _, err := Load(environment); err == nil || !strings.Contains(err.Error(), "SITE_ACCESS_PASSWORD") {
+				t.Fatalf("expected missing production password error, got %v", err)
 			}
 		})
 	}
@@ -116,10 +118,27 @@ func TestLoadProductionAllowsAnUnsetOrEmptySiteAccessPassword(t *testing.T) {
 func TestLoadPreservesTheChosenSiteAccessPassword(t *testing.T) {
 	for _, base := range []map[string]string{nil, productionBase} {
 		for _, password := range []string{"", "x", "中文", " ", "  中文 +&  ", strings.Repeat("x", 256)} {
+			if base != nil && strings.TrimSpace(password) == "" {
+				continue
+			}
 			configuration := mustLoad(t, env(base, map[string]string{"SITE_ACCESS_PASSWORD": password}))
 			if configuration.SiteAccessPassword != password {
 				t.Fatal("site password changed")
 			}
+		}
+	}
+}
+
+func TestTrustedProxyCIDRs(t *testing.T) {
+	configuration := mustLoad(t, env(productionBase, map[string]string{
+		"TRUSTED_PROXY_CIDRS": "127.0.0.1/32, ::1/128",
+	}))
+	if len(configuration.TrustedProxyCIDRs) != 2 {
+		t.Fatal("expected two configured proxy networks")
+	}
+	for _, value := range []string{"*", "127.0.0.1", "0.0.0.0/0", "::/0", "::ffff:127.0.0.1/128", "127.0.0.1/32,"} {
+		if _, err := Load(env(productionBase, map[string]string{"TRUSTED_PROXY_CIDRS": value})); err == nil {
+			t.Errorf("accepted unsafe or invalid proxy network %q", value)
 		}
 	}
 }

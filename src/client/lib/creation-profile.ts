@@ -15,7 +15,7 @@ export function readCreationProfile(): HostCreationProfile {
   try {
     const stored = window.localStorage.getItem(CREATION_PROFILE_STORAGE_KEY);
     if (!stored) {
-      return { codeEntryPolicy: "open", roomPassword: null };
+      return { codeEntryPolicy: "private", roomPassword: null };
     }
     const parsed = JSON.parse(stored) as {
       codeEntryPolicy?: unknown;
@@ -28,7 +28,7 @@ export function readCreationProfile(): HostCreationProfile {
         !viewerPasswordSchema.safeParse(parsed.roomPassword).success)
     ) {
       window.localStorage.removeItem(CREATION_PROFILE_STORAGE_KEY);
-      return { codeEntryPolicy: "open", roomPassword: null };
+      return { codeEntryPolicy: "private", roomPassword: null };
     }
     return {
       codeEntryPolicy: parsed.codeEntryPolicy as CodeEntryPolicy,
@@ -38,7 +38,7 @@ export function readCreationProfile(): HostCreationProfile {
           : (parsed.roomPassword as string),
     };
   } catch {
-    return { codeEntryPolicy: "open", roomPassword: null };
+    return { codeEntryPolicy: "private", roomPassword: null };
   }
 }
 

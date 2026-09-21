@@ -27,9 +27,9 @@ STUN 和可选的 SFU 使用各自的公网 UDP 监听器。已有 nginx 时，�
 ## 容器
 
 安装步骤见 [Docker Compose 配置](./self-hosting.zh-CN.md#使用-docker-compose)。
-镜像为 `ghcr.io/tntcrafthim/piik`，提供 `latest` 和对应产品版本标签（`vMAJOR.MINOR.PATCH`），
-支持 **linux/amd64**。在 `.env` 中设置 `PIIK_IMAGE` 可固定版本或镜像摘要。
-更新需要手动执行；仅拉取镜像不会替换正在运行的容器。
+本适配版本从源码构建本地 `piik:self-hosted` 镜像，支持 **linux/amd64**。
+可使用独立标签保留每个构建，并在 `.env` 中设置 `PIIK_IMAGE`。
+更新前按部署指南重新构建，保留旧镜像用于回滚；上游镜像不含本仓库修复。
 
 [运行时 Dockerfile](../../deploy/container/Dockerfile)封装已验证的 Server 压缩包，
 包括网页界面、许可证声明和 `REVISION`。固定版本的
@@ -61,10 +61,9 @@ ZIP 保存在挂载的日志目录中。
 替换前保留旧镜像、环境配置与数据卷备份。在部署目录执行：
 
 ```sh
-docker compose pull
 docker compose stop
 docker compose cp piik:/home/nonroot ./piik-data-backup
-docker compose up -d
+docker compose up -d --pull never
 docker compose logs --tail=50 piik
 ```
 

@@ -26,8 +26,11 @@ UDP STUN, so it runs on the separate US server rather than Pages.
 
 ## Public Demo Configuration
 
-The chosen demo allows entry without a site password and provides P2P sharing
-without SFU fallback. Use the [self-hosting runbook](./self-hosting.md) with:
+The following records the upstream demo deployment, not this fork's configuration.
+This adaptation rejects an empty production `SITE_ACCESS_PASSWORD`; follow its
+[self-hosting runbook](./self-hosting.md) and use your own domain and password.
+The upstream demo allows entry without a site password and provides P2P sharing
+without SFU fallback:
 
 ```dotenv
 PIIK_ENV=production

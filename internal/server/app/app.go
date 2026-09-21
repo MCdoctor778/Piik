@@ -86,6 +86,8 @@ type Server struct {
 	mediaMux      ice.UDPMux
 	signalOptions signal.Options
 	httpServer    *http.Server
+	loginLimiter  *requestLimiter
+	createLimiter *requestLimiter
 	// Listen binds unless New received an already owned listener. Shutdown waits
 	// for startupDone before reading it; closing before Listen also releases it.
 	listener net.Listener
@@ -139,11 +141,13 @@ func New(options Options) (*Server, error) {
 	}
 
 	server := &Server{
-		config:      configuration,
-		store:       store,
-		siteAccess:  siteAccess,
-		logger:      logger,
-		startupDone: make(chan struct{}),
+		config:        configuration,
+		store:         store,
+		siteAccess:    siteAccess,
+		logger:        logger,
+		startupDone:   make(chan struct{}),
+		loginLimiter:  newRequestLimiter(now, 12*time.Second, 5),
+		createLimiter: newRequestLimiter(now, 6*time.Second, 10),
 	}
 	if options.Listener != nil {
 		server.listener = options.Listener

@@ -1,3 +1,6 @@
+> MCdoctor778 adaptation: invitation-only defaults, production site authentication and application rate limits, with P2P-first routing and optional server fallback.
+> Build using [this repository's self-hosting guide](./docs/operations/self-hosting.md). The website, demo and downloads below belong to upstream and do not contain these fixes.
+
 <p align="center"><img src="./public/favicon.svg" width="64" height="64" alt="Piik mascot"></p>
 <h1 align="center">Piik</h1>
 <p align="center"><strong>Share the good stuff.</strong><br>Private screen sharing for you and up to 20 friends.</p>

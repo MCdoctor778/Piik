@@ -10,13 +10,13 @@ describe("Host creation profile", () => {
     vi.unstubAllGlobals();
   });
 
-  it("defaults to open code entry without a room password", () => {
+  it("defaults to invitation-only entry without a room password", () => {
     vi.stubGlobal("window", {
       localStorage: { getItem: () => null },
     });
 
     expect(readCreationProfile()).toEqual({
-      codeEntryPolicy: "open",
+      codeEntryPolicy: "private",
       roomPassword: null,
     });
   });
@@ -62,9 +62,23 @@ describe("Host creation profile", () => {
     });
 
     expect(readCreationProfile()).toEqual({
-      codeEntryPolicy: "open",
+      codeEntryPolicy: "private",
       roomPassword: null,
     });
     expect(removeItem).toHaveBeenCalledOnce();
+  });
+
+  it("keeps an explicitly saved open policy", () => {
+    vi.stubGlobal("window", {
+      localStorage: { getItem: () => JSON.stringify({ codeEntryPolicy: "open", roomPassword: null }) },
+    });
+    expect(readCreationProfile().codeEntryPolicy).toBe("open");
+  });
+
+  it("uses invitation-only entry when browser storage is unavailable", () => {
+    vi.stubGlobal("window", {
+      localStorage: { getItem: () => { throw new Error("storage unavailable"); } },
+    });
+    expect(readCreationProfile()).toEqual({ codeEntryPolicy: "private", roomPassword: null });
   });
 });
